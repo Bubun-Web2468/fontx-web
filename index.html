@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="FontX — Professional browser-based TTF/OTF font editor. Upload, edit glyphs, modify metrics, kerning, and export fonts.">
+  <title>FontX — TTF/OTF Font Editor</title>
+  <meta name="theme-color" content="#0d1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="assets/image/font-logo.png">
+  <link rel="apple-touch-icon" href="assets/image/font-logo.png">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <!-- opentype.js from local assets -->
+  <script src="assets/js/opentype.min.js"></script>
+</head>
+<body>
+
+<!-- Hidden file input -->
+<input type="file" id="file-input" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2,application/font-sfnt,application/x-font-ttf,application/x-font-opentype" style="display: none;">
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ═══════════ APP LAYOUT ═══════════ -->
+<div id="app">
+
+  <!-- ── Header / Menu Bar ── -->
+  <header class="header" id="header">
+    <div class="header__logo">
+      <img class="header__logo-img" src="assets/image/font-logo.png" alt="FontX Logo">
+      <span class="header__logo-text">FontX</span>
+    </div>
+
+    <nav class="header__menu">
+      <div class="header__menu-item" data-action="new">➕ New</div>
+      <div class="header__menu-item" data-action="demo">✨ Demo</div>
+      <div class="header__menu-item" data-action="open">📂 Open</div>
+      <div class="header__menu-item" data-action="save">💾 Save</div>
+      <div class="header__menu-item" data-action="font-info">ℹ️ Font Info</div>
+      <div class="header__menu-item" data-action="charmap">🗺️ Char Map</div>
+      <div class="header__menu-item" data-action="kerning">⇔ Kerning</div>
+      <div class="header__menu-item" data-action="validate">✅ Validate</div>
+      <div class="header__menu-item" data-action="special-chars">🌡️ Quick Add</div>
+    </nav>
+
+    <div class="header__font-name" id="font-name-display">No Font Loaded</div>
+
+    <!-- ── Theme Toggle ── -->
+    <div class="theme-toggle" id="theme-toggle" role="group" aria-label="Theme selector">
+      <button class="theme-btn active" data-theme-target="dark" title="Dark Mode" id="theme-btn-dark">🌑</button>
+      <button class="theme-btn" data-theme-target="night" title="Night Mode" id="theme-btn-night">🌙</button>
+      <button class="theme-btn" data-theme-target="light" title="Light Mode" id="theme-btn-light">☀️</button>
+    </div>
+  </header>
+
+
+  <!-- ── Toolbar ── -->
+  <div class="toolbar" id="toolbar">
+    <div class="toolbar__group">
+      <button class="toolbar__btn" data-action="new" data-tooltip="New Font (Ctrl+N)">➕</button>
+      <button class="toolbar__btn" data-action="demo" data-tooltip="Load Demo Font">✨</button>
+      <button class="toolbar__btn" data-action="open" data-tooltip="Open Font (Ctrl+O)">📂</button>
+      <button class="toolbar__btn" data-action="save" data-tooltip="Save Font (Ctrl+S)">💾</button>
+      <button class="toolbar__btn" data-action="export" data-tooltip="Export Font">📥</button>
+    </div>
+
+    <div class="toolbar__group">
+      <button class="toolbar__btn" data-action="undo" data-tooltip="Undo (Ctrl+Z)">↩</button>
+      <button class="toolbar__btn" data-action="redo" data-tooltip="Redo (Ctrl+Y)">↪</button>
+    </div>
+
+    <div class="toolbar__group">
+      <button class="toolbar__btn active" data-action="select" data-tooltip="Select Tool (V)">⬚</button>
+      <button class="toolbar__btn" data-action="pan" data-tooltip="Pan Tool (H)">✋</button>
+      <button class="toolbar__btn" data-action="pen" data-tooltip="Pen Tool (P)">✏️</button>
+    </div>
+
+    <div class="toolbar__group">
+      <button class="toolbar__btn" data-action="zoom-in" data-tooltip="Zoom In">🔍+</button>
+      <button class="toolbar__btn" data-action="zoom-out" data-tooltip="Zoom Out">🔍−</button>
+      <button class="toolbar__btn" data-action="zoom-fit" data-tooltip="Fit to View">🎯</button>
+    </div>
+
+    <div class="toolbar__group">
+      <button class="toolbar__btn" data-action="flip-h" data-tooltip="Flip Horizontal">↔</button>
+      <button class="toolbar__btn" data-action="flip-v" data-tooltip="Flip Vertical">↕</button>
+    </div>
+
+    <div style="flex: 1;"></div>
+
+    <div class="toolbar__group">
+      <button class="toolbar__label-btn" data-action="font-info">
+        <span>ℹ️</span> Font Info
+      </button>
+      <button class="toolbar__label-btn" data-action="validate">
+        <span>✅</span> Validate
+      </button>
+      <button class="toolbar__label-btn" data-action="special-chars" data-tooltip="Quick Add Special Characters">
+        <span>🌡️</span> Quick Add
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Main Content (3-column layout) ── -->
+  <div class="main-content" id="main-content">
+
+    <!-- LEFT: Glyph Browser Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__header">
+        <span class="sidebar__title">Glyphs</span>
+        <span class="sidebar__count" id="glyph-count">0</span>
+      </div>
+
+      <div class="sidebar__search">
+        <div class="sidebar__search-wrapper">
+          <span class="sidebar__search-icon">🔍</span>
+          <input type="text" class="sidebar__search-input" id="glyph-search"
+            placeholder="Search glyphs (name, char, U+...)">
+        </div>
+      </div>
+
+      <div class="sidebar__filters">
+        <button class="sidebar__filter-btn active" data-filter="all">All</button>
+        <button class="sidebar__filter-btn" data-filter="latin">Latin</button>
+        <button class="sidebar__filter-btn" data-filter="digits">Digits</button>
+        <button class="sidebar__filter-btn" data-filter="symbols">Symbols</button>
+        <button class="sidebar__filter-btn" data-filter="mapped">Mapped</button>
+        <button class="sidebar__filter-btn" data-filter="empty">Empty</button>
+      </div>
+
+      <div class="glyph-grid" id="glyph-grid">
+        <!-- Glyph cells rendered by JS -->
+      </div>
+
+      <!-- Vertical resize handle -->
+      <div class="sidebar-resize-handle" id="sidebar-resize-handle" title="Drag to resize"></div>
+    </aside>
+
+    <!-- CENTER: Editor Area -->
+    <main class="editor-area" id="editor-area">
+      <!-- Editor Tabs -->
+      <div class="editor-area__tabs">
+        <div class="editor-tab active" data-tab="editor">
+          <span>✏️</span> Glyph Editor
+        </div>
+        <div class="editor-tab" data-tab="charmap">
+          <span>🗺️</span> Character Map
+        </div>
+      </div>
+
+      <!-- Canvas Wrapper -->
+      <div class="editor-canvas-wrapper" id="canvas-wrapper">
+        <!-- Welcome / Drop Zone (shown when no font loaded) -->
+        <div class="welcome-screen" id="welcome-screen">
+          <div class="drop-zone" id="drop-zone">
+            <div class="drop-zone__icon">🔤</div>
+            <div class="drop-zone__title">Welcome to FontX</div>
+            <div class="drop-zone__subtitle">Professional Web Font Editor & Studio</div>
+
+            <div class="welcome-actions" onclick="event.stopPropagation()">
+              <button class="welcome-btn primary" onclick="document.getElementById('file-input').click()">
+                <span>📂</span> Open Font File
+              </button>
+              <button class="welcome-btn accent" onclick="app.loadDemoFont()">
+                <span>✨</span> Load Demo Font
+              </button>
+              <button class="welcome-btn secondary" onclick="app.showNewFontModal()">
+                <span>➕</span> Create New Font
+              </button>
+            </div>
+
+            <div class="drop-zone__formats">
+              <span>Drag & drop font file here:</span>
+              <span class="drop-zone__format">.ttf</span>
+              <span class="drop-zone__format">.otf</span>
+              <span class="drop-zone__format">.woff</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- The Canvas -->
+        <canvas id="glyph-canvas"></canvas>
+
+        <!-- Canvas Info Bar -->
+        <div class="canvas-info-bar" id="canvas-info-bar" style="display: none;">
+          <span>Points: <span class="highlight" id="info-points">0</span></span>
+          <span>Contours: <span class="highlight" id="info-contours">0</span></span>
+          <span>Selected: <span class="highlight" id="info-selected">0</span></span>
+        </div>
+
+        <!-- Glyph Editor Tools (floating panel) -->
+        <div class="glyph-editor-tools" id="glyph-editor-tools" style="display: none;">
+          <button data-tool="select" class="active" title="Select (V)"
+            onclick="app.glyphEditor.setTool('select')">⬚</button>
+          <button data-tool="pan" title="Pan (H)"
+            onclick="app.glyphEditor.setTool('pan')">✋</button>
+          <button data-tool="pen" title="Pen (P)"
+            onclick="app.glyphEditor.setTool('pen')">✏️</button>
+        </div>
+
+        <!-- Zoom Controls -->
+        <div class="editor-zoom-controls" id="zoom-controls" style="display: none;">
+          <button onclick="app.glyphEditor.zoomOut()" title="Zoom Out">−</button>
+          <span id="zoom-level">100%</span>
+          <button onclick="app.glyphEditor.zoomIn()" title="Zoom In">+</button>
+          <button onclick="app.glyphEditor.zoomFit()" title="Fit">⊡</button>
+        </div>
+      </div>
+
+      <!-- Inline Character Map (hidden by default) -->
+      <div id="charmap-view" style="display: none; overflow-y: auto; flex: 1;">
+        <div class="block-selector">
+          <select id="inline-charmap-block" onchange="app.renderInlineCharMap()">
+            <option value="basic-latin">Basic Latin (U+0020 – U+007F)</option>
+            <option value="latin-1">Latin-1 Supplement (U+0080 – U+00FF)</option>
+            <option value="latin-ext-a">Latin Extended-A (U+0100 – U+017F)</option>
+            <option value="greek">Greek & Coptic (U+0370 – U+03FF)</option>
+            <option value="cyrillic">Cyrillic (U+0400 – U+04FF)</option>
+            <option value="arabic">Arabic (U+0600 – U+06FF)</option>
+            <option value="bangla">Bengali / Bangla (U+0980 – U+09FF)</option>
+            <option value="devanagari">Devanagari (U+0900 – U+097F)</option>
+          </select>
+        </div>
+        <div class="charmap-grid" id="inline-charmap-grid"></div>
+      </div>
+    </main>
+
+    <!-- RIGHT: Properties Panel -->
+    <aside class="properties" id="properties">
+      <div class="properties__header">
+        <span class="properties__title">Properties</span>
+      </div>
+      <div class="properties__content" id="properties-content">
+        <div class="empty-state">
+          <div class="empty-state__icon">📝</div>
+          <div class="empty-state__text">No Glyph Selected</div>
+          <div class="empty-state__hint">Click a glyph to see its properties</div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ── Preview Panel ── -->
+  <div class="preview-panel" id="preview-panel">
+    <div class="preview-resize-handle" id="preview-resize-handle" title="Drag to resize"></div>
+    <div class="preview-panel__header">
+      <span class="preview-panel__title">Preview</span>
+      <input type="text" class="preview-panel__input" id="preview-input"
+        placeholder="Type text to preview..."
+        value="Today's temperature is 25℃ (77℉). The angle is 90°, and every symbol should display clearly. 0123456789">
+      <div class="preview-panel__sizes">
+        <button class="preview-size-btn" data-size="14">14px</button>
+        <button class="preview-size-btn active" data-size="24">24px</button>
+        <button class="preview-size-btn" data-size="36">36px</button>
+        <button class="preview-size-btn" data-size="48">48px</button>
+        <button class="preview-size-btn" data-size="all">All</button>
+      </div>
+    </div>
+    <div class="preview-panel__content" id="preview-content">
+      <div class="preview-line" style="color: var(--text-tertiary); font-style: italic;">
+        Load a font to see preview...
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── Status Bar ── -->
+  <footer class="statusbar" id="statusbar">
+    <div class="statusbar__item">
+      <span class="dot"></span>
+      <span>Ready</span>
+    </div>
+    <div class="statusbar__item" id="status-glyphs">Glyphs: 0</div>
+    <div class="statusbar__item" id="status-format">Format: —</div>
+    <div class="statusbar__spacer"></div>
+    <div class="statusbar__item" style="color: var(--text-tertiary); font-size: 10px; opacity: 0.7;">© 2026 FontX V1. Developed by Subhajit Roy (Bubun).</div>
+    <div class="statusbar__item statusbar__item--right" id="status-zoom">Zoom: 100%</div>
+    <div class="statusbar__item statusbar__item--right" id="status-coords">X: 0  Y: 0</div>
+    <div class="statusbar__item statusbar__item--right" id="status-unicode">Unicode: —</div>
+  </footer>
+
+</div>
+
+<!-- ═══════════ MODALS ═══════════ -->
+
+<!-- Font Info Modal -->
+<div class="modal-overlay" id="font-info-modal">
+  <div class="modal" style="max-width: 600px;">
+    <div class="modal__header">
+      <h2 class="modal__title">📋 Font Information</h2>
+      <button class="modal__close" onclick="app.hideModal('font-info-modal')">✕</button>
+    </div>
+    <div class="modal__body" id="font-info-body">
+      <!-- Populated by JS -->
+    </div>
+    <div class="modal__footer">
+      <button class="btn" onclick="app.hideModal('font-info-modal')">Cancel</button>
+      <button class="btn btn--primary" onclick="app.saveFontInfo()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Character Map Modal -->
+<div class="modal-overlay" id="charmap-modal">
+  <div class="modal" style="max-width: 700px;">
+    <div class="modal__header">
+      <h2 class="modal__title">🗺️ Character Map</h2>
+      <button class="modal__close" onclick="app.hideModal('charmap-modal')">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="block-selector">
+        <select id="charmap-block-select" onchange="app.renderCharMap(this.value)">
+          <option value="basic-latin">Basic Latin (U+0020 – U+007F)</option>
+          <option value="latin-1">Latin-1 Supplement (U+0080 – U+00FF)</option>
+          <option value="latin-ext-a">Latin Extended-A (U+0100 – U+017F)</option>
+          <option value="latin-ext-b">Latin Extended-B (U+0180 – U+024F)</option>
+          <option value="greek">Greek & Coptic (U+0370 – U+03FF)</option>
+          <option value="cyrillic">Cyrillic (U+0400 – U+04FF)</option>
+          <option value="arabic">Arabic (U+0600 – U+06FF)</option>
+          <option value="bangla">Bengali / Bangla (U+0980 – U+09FF)</option>
+          <option value="devanagari">Devanagari (U+0900 – U+097F)</option>
+          <option value="punctuation">General Punctuation (U+2000 – U+206F)</option>
+          <option value="currency">Currency Symbols (U+20A0 – U+20CF)</option>
+          <option value="arrows">Arrows (U+2190 – U+21FF)</option>
+          <option value="math">Mathematical Operators (U+2200 – U+22FF)</option>
+          <option value="box-drawing">Box Drawing (U+2500 – U+257F)</option>
+          <option value="geometric">Geometric Shapes (U+25A0 – U+25FF)</option>
+          <option value="dingbats">Dingbats (U+2700 – U+27BF)</option>
+        </select>
+      </div>
+      <div class="charmap-grid" id="charmap-grid"></div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn" onclick="app.hideModal('charmap-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Kerning Modal -->
+<div class="modal-overlay" id="kerning-modal">
+  <div class="modal" style="max-width: 650px;">
+    <div class="modal__header">
+      <h2 class="modal__title">⇔ Kerning Editor</h2>
+      <button class="modal__close" onclick="app.hideModal('kerning-modal')">✕</button>
+    </div>
+    <div class="modal__body" id="kerning-body">
+      <!-- Populated by JS -->
+    </div>
+    <div class="modal__footer">
+      <button class="btn" onclick="app.hideModal('kerning-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Validation Modal -->
+<div class="modal-overlay" id="validation-modal">
+  <div class="modal" style="max-width: 600px;">
+    <div class="modal__header">
+      <h2 class="modal__title">✅ Font Validation</h2>
+      <button class="modal__close" onclick="app.hideModal('validation-modal')">✕</button>
+    </div>
+    <div class="modal__body" id="validation-body">
+      <!-- Populated by JS -->
+    </div>
+    <div class="modal__footer">
+      <button class="btn" onclick="app.hideModal('validation-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Special Characters Modal -->
+<div class="modal-overlay" id="special-chars-modal">
+  <div class="modal" style="max-width: 650px;">
+    <div class="modal__header">
+      <h2 class="modal__title">🌡️ Quick Add Special Characters</h2>
+      <button class="modal__close" onclick="app.hideModal('special-chars-modal')">✕</button>
+    </div>
+    <div class="modal__body" id="special-chars-body">
+      <!-- Populated by JS -->
+    </div>
+    <div class="modal__footer">
+      <button class="btn" onclick="app.hideModal('special-chars-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save Font Modal -->
+<div class="modal-overlay" id="save-modal">
+  <div class="modal" style="max-width: 480px;">
+    <div class="modal__header">
+      <h2 class="modal__title">💾 Save Font</h2>
+      <button class="modal__close" onclick="app.hideModal('save-modal')">✕</button>
+    </div>
+    <div class="modal__body" id="save-modal-body">
+      <!-- Populated by JS -->
+    </div>
+    <div class="modal__footer">
+      <button class="btn" onclick="app.hideModal('save-modal')">Cancel</button>
+      <button class="btn btn--primary" onclick="app.confirmSave()">💾 Save Font</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Font Modal -->
+<div class="modal-overlay" id="new-font-modal">
+  <div class="modal" style="max-width: 480px;">
+    <div class="modal__header">
+      <h2 class="modal__title">➕ Create New Font</h2>
+      <button class="modal__close" onclick="app.hideModal('new-font-modal')">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label>Font Family Name</label>
+        <input type="text" id="new-font-family" value="MyCustomFont" placeholder="e.g. MyBrandSans">
+      </div>
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label>Style / Subfamily</label>
+        <input type="text" id="new-font-style" value="Regular" placeholder="e.g. Regular, Bold, Light">
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+        <div class="form-group">
+          <label>Units Per Em</label>
+          <input type="number" id="new-font-upem" value="1000" min="16" max="16384">
+        </div>
+        <div class="form-group">
+          <label>Ascender</label>
+          <input type="number" id="new-font-ascender" value="800">
+        </div>
+        <div class="form-group">
+          <label>Descender</label>
+          <input type="number" id="new-font-descender" value="-200">
+        </div>
+      </div>
+      <div style="font-size: 11px; color: var(--text-tertiary); line-height: 1.4;">
+        Standard OpenType/TrueType baseline is at Y=0. Standard unitsPerEm is 1000 (or 2048).
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn" onclick="app.hideModal('new-font-modal')">Cancel</button>
+      <button class="btn btn--primary" onclick="app.confirmNewFont()">Create Font</button>
+    </div>
+  </div>
+</div>
+
+<!-- Font Ready & Installation Guide Modal -->
+<div class="modal-overlay" id="font-guide-modal">
+  <div class="modal" style="max-width: 580px;">
+    <div class="modal__header">
+      <h2 class="modal__title">🚀 Font Ready & Export Guide</h2>
+      <button class="modal__close" onclick="app.hideModal('font-guide-modal')">✕</button>
+    </div>
+    <div class="modal__body">
+      <div style="margin-bottom:14px; padding:10px 14px; background:var(--accent-green-dim,rgba(34,197,94,.12)); border:1px solid var(--accent-green,#22c55e); border-radius:8px; color:var(--accent-green,#22c55e); font-size:13px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span style="font-size:18px;">✅</span>
+          <div>
+            <strong>Font saved successfully!</strong>
+            <div id="font-guide-filename" style="font-size:11px; opacity:0.9; font-family:var(--font-mono);">font.ttf</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Guide Tabs -->
+      <div class="guide-tabs" style="display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 1px solid var(--border-default); padding-bottom: 8px;">
+        <button class="guide-tab-btn active" data-guide="web" onclick="switchGuideTab('web')">🌐 Web & CSS</button>
+        <button class="guide-tab-btn" data-guide="windows" onclick="switchGuideTab('windows')">🪟 Windows</button>
+        <button class="guide-tab-btn" data-guide="mac" onclick="switchGuideTab('mac')">🍎 macOS</button>
+        <button class="guide-tab-btn" data-guide="linux" onclick="switchGuideTab('linux')">🐧 Linux</button>
+      </div>
+
+      <!-- Web & CSS Tab -->
+      <div id="guide-tab-web" class="guide-tab-content">
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+          Use your exported font in any web project with this ready-to-use <code>@font-face</code> CSS rule:
+        </p>
+        <div style="position: relative; margin-bottom: 10px;">
+          <pre id="font-guide-css" style="background: var(--bg-deep); border: 1px solid var(--border-default); border-radius: 6px; padding: 12px; font-family: var(--font-mono); font-size: 12px; color: var(--accent-blue); overflow-x: auto; white-space: pre; line-height: 1.5; margin: 0;"></pre>
+          <button class="btn btn--sm" onclick="app.copyFontCss()" style="position: absolute; top: 8px; right: 8px; font-size: 11px; padding: 4px 8px; background: var(--bg-elevated); border: 1px solid var(--border-default); cursor: pointer;">
+            📋 Copy CSS
+          </button>
+        </div>
+        <div style="font-size: 11px; color: var(--text-tertiary);">
+          💡 Place the font file in your web project folder (e.g. <code>fonts/</code>) and link the CSS in your stylesheet.
+        </div>
+      </div>
+
+      <!-- Windows Tab -->
+      <div id="guide-tab-windows" class="guide-tab-content" style="display: none;">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; gap:12px; align-items:flex-start; padding:10px; background:var(--bg-tertiary); border-radius:8px; border:1px solid var(--border-default);">
+            <div style="width:24px; height:24px; border-radius:50%; background:var(--accent-blue); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0;">1</div>
+            <div>
+              <div style="font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:2px;">Locate font in Downloads</div>
+              <div style="font-size:12px; color:var(--text-secondary);">Find the downloaded <code>.ttf</code> or <code>.otf</code> file in your Downloads folder.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start; padding:10px; background:var(--bg-tertiary); border-radius:8px; border:1px solid var(--border-default);">
+            <div style="width:24px; height:24px; border-radius:50%; background:var(--accent-blue); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0;">2</div>
+            <div>
+              <div style="font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:2px;">Install for all users</div>
+              <div style="font-size:12px; color:var(--text-secondary);">Right-click the font file and choose <strong>"Install for all users"</strong>. This registers the font system-wide in <code>C:\Windows\Fonts</code>.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- macOS Tab -->
+      <div id="guide-tab-mac" class="guide-tab-content" style="display: none;">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; gap:12px; align-items:flex-start; padding:10px; background:var(--bg-tertiary); border-radius:8px; border:1px solid var(--border-default);">
+            <div style="width:24px; height:24px; border-radius:50%; background:var(--accent-blue); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0;">1</div>
+            <div>
+              <div style="font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:2px;">Open in Font Book</div>
+              <div style="font-size:12px; color:var(--text-secondary);">Double-click the downloaded font file to open it in macOS Font Book.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start; padding:10px; background:var(--bg-tertiary); border-radius:8px; border:1px solid var(--border-default);">
+            <div style="width:24px; height:24px; border-radius:50%; background:var(--accent-blue); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0;">2</div>
+            <div>
+              <div style="font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:2px;">Install Font</div>
+              <div style="font-size:12px; color:var(--text-secondary);">Click <strong>"Install Font"</strong> in the preview dialog. The font is now ready in all Mac apps.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linux Tab -->
+      <div id="guide-tab-linux" class="guide-tab-content" style="display: none;">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="padding:10px; background:var(--bg-tertiary); border-radius:8px; border:1px solid var(--border-default); font-size:12px; color:var(--text-secondary);">
+            Copy font file to <code>~/.local/share/fonts/</code> and refresh cache:
+            <pre style="background:var(--bg-deep); padding:8px; border-radius:4px; margin-top:6px; color:var(--accent-blue); font-family:var(--font-mono); font-size:11px;">cp ~/Downloads/*.ttf ~/.local/share/fonts/
+fc-cache -f -v</pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--primary" onclick="app.hideModal('font-guide-modal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════ SCRIPTS ═════════ -->
+<script src="assets/js/font-validator.js"></script>
+<script src="assets/js/kerning-editor.js"></script>
+<script src="assets/js/glyph-editor.js"></script>
+<script src="assets/js/font-factory.js"></script>
+<script src="assets/js/app.js"></script>
+
+<script>
+  // Guide tab switcher
+  function switchGuideTab(tabId) {
+    document.querySelectorAll('.guide-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.guide === tabId);
+    });
+    document.querySelectorAll('.guide-tab-content').forEach(content => {
+      content.style.display = content.id === `guide-tab-${tabId}` ? 'block' : 'none';
+    });
+  }
+
+  // PWA Service Worker Registration
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
+
+</body>
+</html>

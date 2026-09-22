@@ -1,0 +1,23 @@
+{
+  "name": "fontx-web",
+  "version": "1.0.0",
+  "description": "FontX — Modern browser-based TTF/OTF Font Editor & Studio",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve -l 3000 .",
+    "dev": "npx serve -l 3000 .",
+    "serve": "npx serve -l 3000 ."
+  },
+  "keywords": [
+    "font-editor",
+    "ttf",
+    "otf",
+    "opentype",
+    "truetype",
+    "typography",
+    "web-font",
+    "glyph-editor"
+  ],
+  "author": "Subhajit Roy (Bubun)",
+  "license": "MIT"
+}

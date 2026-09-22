@@ -1,0 +1,23 @@
+{
+  "name": "FontX — TTF/OTF Font Editor",
+  "short_name": "FontX",
+  "description": "Professional browser-based TTF/OTF font editor. Upload, edit glyphs, modify metrics, kerning, and export fonts.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0e14",
+  "theme_color": "#0d1117",
+  "icons": [
+    {
+      "src": "assets/image/font-logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/image/font-logo.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["utilities", "productivity", "design"]
+}
